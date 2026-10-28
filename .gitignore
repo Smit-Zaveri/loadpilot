@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Built UI copied into the Python package
+backend/loadpilot/static/
+
+# Local data and results
+*.db
+results*.json
+.loadpilot/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/

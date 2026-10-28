@@ -1,0 +1,8 @@
+# Open model: send a fixed arrival rate above the target's limit and watch the 429s.
+name: hit-the-rate-limit
+load:
+  rate: 30
+  duration: 15s
+  max_in_flight: 200
+request:
+  url: http://127.0.0.1:8090/rate-limited

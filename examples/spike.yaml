@@ -1,0 +1,14 @@
+# Sudden traffic spike in requests per second, against a flaky endpoint.
+name: spike
+load:
+  mode: rate
+  start: 20
+  stages:
+    - { duration: 10s, target: 20 }
+    - { duration: 2s, target: 300 }
+    - { duration: 10s, target: 300 }
+    - { duration: 2s, target: 20 }
+    - { duration: 10s, target: 20 }
+request:
+  url: http://127.0.0.1:8090/flaky
+  params: { error_rate: 0.02, ms: 20 }

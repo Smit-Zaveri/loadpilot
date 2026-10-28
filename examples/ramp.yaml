@@ -1,0 +1,20 @@
+# Ramp virtual users up, hold, then ramp down. Two requests per iteration.
+name: ramp-up
+warmup: 5s
+load:
+  mode: vus
+  stages:
+    - { duration: 10s, target: 20 }
+    - { duration: 20s, target: 20 }
+    - { duration: 5s, target: 0 }
+steps:
+  - name: list
+    request:
+      url: http://127.0.0.1:8090/random-latency
+      params: { min_ms: 10, max_ms: 80 }
+  - name: create
+    request:
+      method: POST
+      url: http://127.0.0.1:8090/echo
+      json: { title: hello }
+      timeout: 5s

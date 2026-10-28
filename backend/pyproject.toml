@@ -1,0 +1,59 @@
+[project]
+name = "loadpilot"
+version = "0.1.0.dev0"
+description = "Self-hosted load and performance testing for HTTP and LLM APIs, with a live web UI."
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "LoadPilot contributors" }]
+keywords = ["load-testing", "performance", "benchmark", "llm", "http"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Testing :: Traffic Generation",
+]
+dependencies = [
+    "aiohttp>=3.10",
+    "fastapi>=0.115",
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+    "rich>=13.7",
+    "typer>=0.12",
+    "uvicorn>=0.30",
+]
+
+[project.scripts]
+loadpilot = "loadpilot.cli:app"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.27",
+    "mypy>=1.11",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.6",
+    "types-PyYAML",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["loadpilot"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]

@@ -353,7 +353,16 @@ Python ≥ 3.11. Versioning: SemVer, release-please for changelogs.
 
 ## 11. Milestones
 
-Progress: ✅ Phase 0 · ✅ Phase 1 · ⏭ Phase 2 next
+Progress: ✅ Phase 0 · ✅ Phase 1 · ✅ Phase 2 · 🟡 Phase 3 (live slider, chart markers and
+generator-health warning done; safety caps remaining) · ⏭ Phase 4 next
+
+Decisions made while building Phase 2 (differ from §7):
+- **Plain CSS with design tokens** instead of Tailwind + shadcn/ui. The instrument-panel look
+  (see `DESIGN.md`) needs few components, and tokens keep both themes exact.
+- **fetch + small hooks** instead of TanStack Query; **hand-written API types** in `src/api.ts`.
+  Generate them from OpenAPI once the API grows (Phase 4).
+- **One active run at a time** per server, so the generator's CPU isn't shared between runs.
+- Runs live in memory until restart; SQLite storage comes in Phase 4.
 
 | Phase | Deliverable | Done when |
 |-------|-------------|-----------|

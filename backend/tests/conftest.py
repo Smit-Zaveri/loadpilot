@@ -64,23 +64,23 @@ def _free_port() -> int:
         return int(s.getsockname()[1])
 
 
-@pytest.fixture(scope="session")
-def demo_url() -> Iterator[str]:
+def serve(app: Any) -> Iterator[str]:
+    """Run an ASGI app on a real uvicorn server in a background thread."""
     port = _free_port()
-    config = uvicorn.Config(
-        create_app(rate_limit_capacity=5, rate_limit_per_second=5.0),
-        host="127.0.0.1",
-        port=port,
-        log_level="warning",
-    )
+    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
     server = uvicorn.Server(config)
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
     deadline = time.monotonic() + 10
     while not server.started:
         if time.monotonic() > deadline:
-            raise RuntimeError("demo server did not start")
+            raise RuntimeError("server did not start")
         time.sleep(0.02)
     yield f"http://127.0.0.1:{port}"
     server.should_exit = True
     thread.join(timeout=5)
+
+
+@pytest.fixture(scope="session")
+def demo_url() -> Iterator[str]:
+    yield from serve(create_app(rate_limit_capacity=5, rate_limit_per_second=5.0))

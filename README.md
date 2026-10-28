@@ -2,8 +2,9 @@
 
 Self-hosted load and performance testing for HTTP and LLM APIs, with a live web UI.
 
-> **Status: early development (pre-alpha).** The load engine, CLI and demo target work today.
-> The web UI, history, scenarios and LLM metrics are next. See [PLAN.md](PLAN.md) for the roadmap.
+> **Status: early development (pre-alpha).** The load engine, CLI, web UI with live charts and
+> demo target work today. Saved history, scenarios and LLM metrics are next.
+> See [PLAN.md](PLAN.md) for the roadmap.
 
 ## Why LoadPilot
 
@@ -16,9 +17,26 @@ Self-hosted load and performance testing for HTTP and LLM APIs, with a live web 
   errors, rate limits (429) and a fake streaming LLM.
 - **Self-hosted, no telemetry.** Your traffic and results stay on your machine.
 
-## Quick start
+## Quick start: web UI
 
-Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
+Requires Python 3.11+, [uv](https://docs.astral.sh/uv/), Node.js 22+ and [pnpm](https://pnpm.io/).
+
+```bash
+cd frontend && pnpm install && pnpm build    # builds the UI into the Python package
+cd ../backend && uv sync
+uv run loadpilot ui --open                   # http://127.0.0.1:8089
+```
+
+Click **Fill in the built-in demo target**, then **Start test**. While a test runs you can:
+
+- drag the slider to change users or requests per second live (changes are marked on the charts)
+- pause, resume, stop gracefully, or abort
+- watch throughput, latency percentiles, failures and concurrency update every second
+
+The UI listens on `127.0.0.1` only. Runs are kept in memory until the server restarts
+(saved history is planned).
+
+## Quick start: command line
 
 ```bash
 cd backend

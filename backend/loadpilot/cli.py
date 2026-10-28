@@ -85,6 +85,44 @@ def run(
         raise typer.Exit(130)
 
 
+@app.command()
+def ui(
+    host: Annotated[
+        str, typer.Option(help="Interface to bind. Keep 127.0.0.1 unless you need remote access.")
+    ] = "127.0.0.1",
+    port: int = 8089,
+    open_browser: Annotated[bool, typer.Option("--open", help="Open the UI in a browser.")] = False,
+    demo: Annotated[bool, typer.Option(help="Serve the demo target at /demo.")] = True,
+) -> None:
+    """Start the web UI and API server."""
+    import uvicorn
+
+    from .api import LOOPBACK_HOSTS, create_app
+
+    local = host in LOOPBACK_HOSTS
+    if not local:
+        err_console.print(
+            f"[bold yellow]Warning:[/] binding to {host}. Anyone who can reach this address can "
+            "start load tests from this machine. LoadPilot has no login yet; only do this on a "
+            "trusted network."
+        )
+    url = f"http://{'127.0.0.1' if host in ('0.0.0.0', '::') else host}:{port}"
+    console.print(f"[bold]LoadPilot[/] {__version__} · UI on [cyan]{url}[/]  (Ctrl+C to quit)")
+    if demo:
+        console.print(f"[dim]Demo target: {url}/demo/[/]")
+    if open_browser:
+        import threading
+        import webbrowser
+
+        threading.Timer(1.0, webbrowser.open, args=(url,)).start()
+    uvicorn.run(
+        create_app(demo=demo, allowed_hosts=None if local else ["*"]),
+        host=host,
+        port=port,
+        log_level="warning",
+    )
+
+
 @app.command("demo-server")
 def demo_server(
     host: str = "127.0.0.1",

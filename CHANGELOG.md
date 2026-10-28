@@ -7,6 +7,8 @@ All notable changes are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- `./start.sh`: one command to install dependencies, build the UI when it changed and start
+  LoadPilot; `--dev` runs the API plus the Vite dev server with hot reload.
 - Web UI (`loadpilot ui`): new-test form with validation, live run view with throughput,
   latency percentile, failure and concurrency charts, per-step table, status codes and errors.
 - Live load control from the browser (slider), pause/resume/stop/abort, with chart markers.

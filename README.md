@@ -19,13 +19,16 @@ Self-hosted load and performance testing for HTTP and LLM APIs, with a live web 
 
 ## Quick start: web UI
 
-Requires Python 3.11+, [uv](https://docs.astral.sh/uv/), Node.js 22+ and [pnpm](https://pnpm.io/).
+Requires Python 3.11+, [uv](https://docs.astral.sh/uv/), Node.js 22+ and [pnpm](https://pnpm.io/)
+(macOS or Linux; on Windows use WSL for now).
 
 ```bash
-cd frontend && pnpm install && pnpm build    # builds the UI into the Python package
-cd ../backend && uv sync
-uv run loadpilot ui --open                   # http://127.0.0.1:8089
+./start.sh            # installs what's missing, builds the UI, opens http://127.0.0.1:8089
 ```
+
+Run it again any time: it only reinstalls or rebuilds when something changed.
+Options: `--port N`, `--no-open`, `--rebuild`, and `--dev` for UI development with hot reload.
+Press `Ctrl+C` to stop.
 
 Click **Fill in the built-in demo target**, then **Start test**. While a test runs you can:
 

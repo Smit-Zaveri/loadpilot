@@ -28,8 +28,8 @@ pnpm exec playwright install chromium   # once
 pnpm test:e2e                # browser tests against the built UI (starts the server itself)
 ```
 
-For UI work, run `uv run loadpilot ui` in `backend/` and `pnpm dev` in `frontend/`,
-then open http://localhost:5173.
+For UI work, `./start.sh --dev` from the repo root starts the API server and the Vite dev
+server with hot reload (http://localhost:5173), and stops both on Ctrl+C.
 
 **macOS + Python 3.13+:** if `uv run loadpilot` fails with `No module named 'loadpilot'`
 inside `~/Documents` or another synced folder, macOS has marked the venv's `.pth` files as

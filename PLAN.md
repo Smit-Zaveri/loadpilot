@@ -353,8 +353,17 @@ Python ≥ 3.11. Versioning: SemVer, release-please for changelogs.
 
 ## 11. Milestones
 
-Progress: ✅ Phase 0 · ✅ Phase 1 · ✅ Phase 2 · 🟡 Phase 3 (live slider, chart markers and
-generator-health warning done; safety caps remaining) · ⏭ Phase 4 next
+Progress: ✅ Phase 0 · ✅ Phase 1 · ✅ Phase 2 · ✅ Phase 3 · ✅ Phase 4 · ⏭ Phase 5 next
+
+Decisions made while building Phases 3-4 (differ from §2.6 and §5):
+- **Standard-library `sqlite3` with numbered migrations** (`PRAGMA user_version`) instead of
+  SQLAlchemy + Alembic. Three tables don't need an ORM, and it adds no dependencies.
+  A database from a newer LoadPilot is refused rather than silently misread.
+- No `run_histograms` / `run_errors` tables yet: the saved summary already holds percentiles
+  and error samples. Add them when exports or CI comparisons need raw histograms (Phase 7).
+- **Baseline is one per test name**, so CI can later ask "compare with the baseline for X".
+- Saved plans have secret headers masked; "Run again" asks the user to re-enter them.
+- Comparisons call changes under 2% "same", because run-to-run noise is about that size.
 
 Decisions made while building Phase 2 (differ from §7):
 - **Plain CSS with design tokens** instead of Tailwind + shadcn/ui. The instrument-panel look

@@ -7,6 +7,17 @@ All notable changes are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- Saved history in SQLite (`~/.loadpilot/loadpilot.db`, `--db`, `LOADPILOT_DB`). Results are
+  saved every second; runs cut off by a server crash are marked "interrupted" on next start.
+- History page: search, paging, multi-select, bulk delete with confirmation.
+- Compare page: 2 to 4 runs, difference table in plain words ("18% slower", "+0.50 pts")
+  against the baseline or oldest run, overlaid p95 and throughput charts.
+- Baselines (one per test name), run notes, "Run again" (refills the form from a saved plan),
+  "Compare with baseline" on run pages.
+- Safety limits (max users, max rate, max test length) on a Settings page, enforced by the
+  server when a test starts and when the load is changed live, and checked in the form.
+- API: `GET /api/runs` paging and search (`{items, total}`), `PATCH`/`DELETE /api/runs/{id}`,
+  `PUT /api/runs/{id}/baseline`, `GET`/`PUT /api/settings`.
 - `./start.sh`: one command to install dependencies, build the UI when it changed and start
   LoadPilot; `--dev` runs the API plus the Vite dev server with hot reload.
 - Web UI (`loadpilot ui`): new-test form with validation, live run view with throughput,

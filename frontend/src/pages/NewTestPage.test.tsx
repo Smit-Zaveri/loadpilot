@@ -17,7 +17,10 @@ function mockFetch(handler: Handler) {
 
 const defaults: Handler = (url) => {
   if (url === "/api/health") return { status: 200, body: { status: "ok", version: "x", demo: true } };
-  if (url === "/api/runs") return { status: 200, body: [] };
+  if (url.startsWith("/api/runs")) return { status: 200, body: { items: [], total: 0 } };
+  if (url === "/api/settings") {
+    return { status: 200, body: { limits: { max_vus: 1000, max_rate: 5000, max_duration: 7200 } } };
+  }
   return { status: 404, body: null };
 };
 

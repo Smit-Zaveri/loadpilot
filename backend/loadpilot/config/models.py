@@ -120,6 +120,10 @@ class LoadSpec(_Model):
     def total_duration(self) -> float:
         return sum(s.duration for s in self.stages)
 
+    @property
+    def peak(self) -> float:
+        return max([self.start or 0.0, *(s.target for s in self.stages)])
+
     def target_at(self, t: float) -> float:
         """Target level at ``t`` seconds into the run (linear ramp within each stage)."""
         prev = self.start if self.start is not None else 0.0
@@ -131,6 +135,39 @@ class LoadSpec(_Model):
             elapsed += stage.duration
             prev = stage.target
         return prev
+
+
+class Limits(_Model):
+    """Server-wide safety caps, so a typo can't flood a target."""
+
+    max_vus: int = Field(default=1000, ge=1, le=1_000_000)
+    max_rate: float = Field(default=5000.0, gt=0, le=10_000_000)
+    max_duration: Duration = 7200.0
+
+    @field_validator("max_duration")
+    @classmethod
+    def _positive_duration(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError("max_duration must be greater than 0")
+        return v
+
+    def target_error(self, mode: str, value: float) -> str | None:
+        if mode == "vus" and value > self.max_vus:
+            return f"{value:g} virtual users is over the limit of {self.max_vus:g} (see Settings)"
+        if mode == "rate" and value > self.max_rate:
+            return f"{value:g} requests/s is over the limit of {self.max_rate:g} (see Settings)"
+        return None
+
+    def plan_errors(self, plan: TestPlan) -> list[str]:
+        errors = []
+        if (e := self.target_error(plan.load.mode, plan.load.peak)) is not None:
+            errors.append(e)
+        if plan.load.total_duration > self.max_duration:
+            errors.append(
+                f"duration of {plan.load.total_duration:g}s is over the limit of "
+                f"{self.max_duration:g}s (see Settings)"
+            )
+        return errors
 
 
 class TestPlan(_Model):

@@ -1,6 +1,10 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 8099;
+// A fresh database per run keeps tests away from the real history in ~/.loadpilot.
+const DB = join(tmpdir(), `loadpilot-e2e-${process.pid}.db`);
 
 export default defineConfig({
   testDir: "e2e",
@@ -15,10 +19,11 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
     // Serves the built UI (run `pnpm build` first) plus the API and demo target.
-    command: `uv run --no-sync python -m loadpilot ui --port ${PORT}`,
+    command: `uv run --no-sync python -m loadpilot ui --port ${PORT} --db "${DB}"`,
     cwd: "../backend",
     url: `http://127.0.0.1:${PORT}/api/health`,
-    reuseExistingServer: !process.env.CI,
+    // Always start fresh: a reused server would share another run's database.
+    reuseExistingServer: false,
     timeout: 60_000,
   },
 });

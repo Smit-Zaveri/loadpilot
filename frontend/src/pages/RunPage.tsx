@@ -2,8 +2,11 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import type { AlignedData } from "uplot";
 import { isDone, type RunDetail } from "../api";
+import { BaselineTag } from "../components/BaselineTag";
 import { ResponsesPanel } from "../components/ResponsesPanel";
+import { RunActions } from "../components/RunActions";
 import { RunControls } from "../components/RunControls";
+import { useLimits } from "../hooks/useLimits";
 import { StatusBadge } from "../components/StatusBadge";
 import { StepTable } from "../components/StepTable";
 import { TimeChart } from "../components/TimeChart";
@@ -191,8 +194,9 @@ function Warnings({ run }: { run: RunDetail }) {
 
 export function RunPage() {
   const { id = "" } = useParams();
-  const { run, state, error } = useRunStream(id);
+  const { run, state, error, setRun } = useRunStream(id);
   const [controlError, setControlError] = useState<string | null>(null);
+  const limits = useLimits();
 
   if (state === "loading") return <p className="page-state">Loading run…</p>;
 
@@ -202,9 +206,7 @@ export function RunPage() {
       <div className="page-state">
         <h1 className="page-title">{notFound ? "Run not found" : "Couldn't load this run"}</h1>
         <p className="muted">
-          {notFound
-            ? "Runs are kept in memory, so they disappear when the LoadPilot server restarts."
-            : error?.message}
+          {notFound ? "It may have been deleted. Saved runs are listed in History." : error?.message}
         </p>
         <Link to="/" className="btn">
           Start a new test
@@ -223,6 +225,7 @@ export function RunPage() {
         <div className="run-title">
           <h1 className="page-title">{run.name}</h1>
           <StatusBadge status={run.status} />
+          {run.is_baseline && <BaselineTag />}
         </div>
         {firstRequest && (
           <p className="run-target">
@@ -239,7 +242,14 @@ export function RunPage() {
         </div>
       </header>
 
-      {!done && <RunControls run={run} onError={setControlError} />}
+      {!done && <RunControls run={run} limits={limits} onError={setControlError} />}
+      {done && <RunActions run={run} onChange={setRun} />}
+      {run.status === "interrupted" && (
+        <p className="alert alert-warn" role="status">
+          The LoadPilot server stopped while this test was running. Results below cover the time
+          before it stopped.
+        </p>
+      )}
       {controlError && (
         <p className="alert alert-error" role="alert">
           {controlError}
@@ -262,13 +272,6 @@ export function RunPage() {
       <section className="panel" aria-label="Responses">
         <ResponsesPanel summary={run.summary} />
       </section>
-      {done && (
-        <p>
-          <Link to="/" className="btn">
-            Start another test
-          </Link>
-        </p>
-      )}
     </div>
   );
 }

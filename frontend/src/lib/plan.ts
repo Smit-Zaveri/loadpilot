@@ -1,4 +1,7 @@
-import type { LoadMode, PlanJson } from "../api";
+import type { Limits, LoadMode, PlanJson } from "../api";
+
+/** Matches the backend's mask for secret-looking header values. */
+export const REDACTED = "••••••";
 
 export const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"] as const;
 
@@ -63,7 +66,102 @@ export function parseHeaders(text: string): { headers: Record<string, string>; e
   return { headers };
 }
 
-export function buildPlan(f: FormState): { plan?: PlanJson; errors: FieldErrors } {
+/** 90 -> "1m30s", 30 -> "30s", 0.5 -> "500ms", 3600 -> "1h". */
+export function formatDurationInput(seconds: number): string {
+  if (seconds > 0 && seconds < 1) return `${Math.round(seconds * 1000)}ms`;
+  let rest = Math.round(seconds);
+  const parts: string[] = [];
+  for (const [unit, size] of [["h", 3600], ["m", 60]] as const) {
+    if (rest >= size) {
+      parts.push(`${Math.floor(rest / size)}${unit}`);
+      rest %= size;
+    }
+  }
+  if (rest > 0 || parts.length === 0) parts.push(`${rest}s`);
+  return parts.join("");
+}
+
+interface StoredLoad {
+  mode: LoadMode;
+  vus?: number | null;
+  rate?: number | null;
+  duration?: number | null;
+  start?: number | null;
+  stages?: { duration: number; target: number }[];
+  max_in_flight?: number;
+}
+
+/**
+ * Turns a saved plan back into form values for "Run again".
+ * `notes` explains anything the form can't represent exactly.
+ */
+export function planToForm(plan: PlanJson): { form: FormState; notes: string[] } {
+  const notes: string[] = [];
+  const req = (plan.steps[0]?.request ?? {}) as {
+    method?: string;
+    url?: string;
+    headers?: Record<string, string>;
+    json?: unknown;
+    body?: string | null;
+    timeout?: number;
+  };
+  if (plan.steps.length > 1) {
+    notes.push(`This test had ${plan.steps.length} steps; only the first one is filled in.`);
+  }
+  const headers = Object.entries(req.headers ?? {});
+  if (headers.some(([, v]) => v === REDACTED)) {
+    notes.push("Secret header values aren't saved. Re-enter them before starting.");
+  }
+
+  const load = plan.load as StoredLoad;
+  const level = load.mode === "vus" ? load.vus : load.rate;
+  const stages = load.stages ?? [];
+  let amount = 10;
+  let rampUp = 0;
+  let duration = 30;
+  if (level != null && load.duration != null) {
+    amount = level;
+    duration = load.duration;
+  } else if (
+    stages.length === 2 &&
+    !load.start &&
+    stages[0].target === stages[1].target
+  ) {
+    amount = stages[0].target;
+    rampUp = stages[0].duration;
+    duration = stages[1].duration;
+  } else if (stages.length > 0) {
+    amount = Math.max(...stages.map((s) => s.target));
+    duration = stages.reduce((sum, s) => sum + s.duration, 0);
+    notes.push(
+      `This test used ${stages.length} load stages; the form holds its peak for the same total time.`,
+    );
+  }
+
+  const method = (req.method ?? "GET").toUpperCase();
+  const form: FormState = {
+    ...defaultForm,
+    name: plan.name,
+    method: (METHODS as readonly string[]).includes(method)
+      ? (method as FormState["method"])
+      : "GET",
+    url: req.url ?? "",
+    mode: load.mode,
+    amount: String(amount),
+    rampUp: formatDurationInput(rampUp),
+    duration: formatDurationInput(duration),
+    headers: headers.map(([k, v]) => `${k}: ${v === REDACTED ? "" : v}`).join("\n"),
+    body:
+      req.json != null ? JSON.stringify(req.json, null, 2) : typeof req.body === "string" ? req.body : "",
+    timeout: formatDurationInput(req.timeout ?? 30),
+    warmup: formatDurationInput(plan.warmup ?? 0),
+    maxInFlight: String(load.max_in_flight ?? 1000),
+    insecure: Boolean(plan.insecure),
+  };
+  return { form, notes };
+}
+
+export function buildPlan(f: FormState, limits?: Limits): { plan?: PlanJson; errors: FieldErrors } {
   const errors: FieldErrors = {};
 
   const url = f.url.trim();
@@ -96,6 +194,19 @@ export function buildPlan(f: FormState): { plan?: PlanJson; errors: FieldErrors 
 
   const { headers, error: headerError } = parseHeaders(f.headers);
   if (headerError) errors.headers = headerError;
+
+  if (limits) {
+    if (!errors.amount && f.mode === "vus" && amount > limits.max_vus) {
+      errors.amount = `The limit is ${limits.max_vus} users (change it in Settings).`;
+    }
+    if (!errors.amount && f.mode === "rate" && amount > limits.max_rate) {
+      errors.amount = `The limit is ${limits.max_rate} req/s (change it in Settings).`;
+    }
+    const total = (rampUp ?? 0) + (duration ?? 0);
+    if (!errors.duration && !errors.rampUp && total > limits.max_duration) {
+      errors.duration = `The total time limit is ${formatDurationInput(limits.max_duration)} (change it in Settings).`;
+    }
+  }
 
   if (Object.keys(errors).length > 0) return { errors };
 

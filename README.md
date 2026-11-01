@@ -2,9 +2,9 @@
 
 Self-hosted load and performance testing for HTTP and LLM APIs, with a live web UI.
 
-> **Status: early development (pre-alpha).** The load engine, CLI, web UI with live charts and
-> demo target work today. Saved history, scenarios and LLM metrics are next.
-> See [PLAN.md](PLAN.md) for the roadmap.
+> **Status: early development (pre-alpha).** The load engine, CLI, web UI with live charts,
+> saved history with run comparison, safety limits and the demo target work today. Multi-step
+> scenarios, LLM metrics, exports and CI mode are next. See [PLAN.md](PLAN.md) for the roadmap.
 
 ## Why LoadPilot
 
@@ -36,8 +36,16 @@ Click **Fill in the built-in demo target**, then **Start test**. While a test ru
 - pause, resume, stop gracefully, or abort
 - watch throughput, latency percentiles, failures and concurrency update every second
 
-The UI listens on `127.0.0.1` only. Runs are kept in memory until the server restarts
-(saved history is planned).
+Afterwards:
+
+- **History** lists every run (saved in `~/.loadpilot/loadpilot.db`; change it with `--db` or
+  `LOADPILOT_DB`). Search, delete, or select 2 to 4 runs to **compare** them side by side.
+- Mark a run as the **baseline** for its test name; later runs offer "Compare with baseline".
+- **Run again** refills the form from a saved run. Add notes about what changed.
+- **Settings** holds safety limits (max users, max rate, max test length), enforced at start
+  and for live changes, so a typo can't flood a target.
+
+The UI listens on `127.0.0.1` only.
 
 ## Quick start: command line
 

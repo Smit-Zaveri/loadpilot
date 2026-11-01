@@ -72,8 +72,15 @@ def test_run_lifecycle_over_websocket(client, demo_url):
     assert final["series"]
 
     runs = client.get("/api/runs").json()
-    assert runs[0]["id"] == run_id
-    assert runs[0]["summary"]["requests"] == final["summary"]["requests"]
+    assert runs["total"] == 1
+    assert runs["items"][0]["id"] == run_id
+    assert runs["items"][0]["summary"]["requests"] == final["summary"]["requests"]
+
+    # After it ends, the run is served from storage with the same data.
+    stored = client.get(f"/api/runs/{run_id}").json()
+    assert stored["status"] == "finished"
+    assert stored["summary"] == final["summary"]
+    assert len(stored["series"]) == len(final["series"])
 
 
 def test_websocket_for_finished_run_sends_snapshot_then_closes(client, demo_url):
@@ -124,7 +131,7 @@ def test_invalid_plan_is_rejected(client):
         "/api/runs", json={"request": {"url": "ftp://x"}, "load": {"vus": 1, "duration": 1}}
     )
     assert resp.status_code == 422
-    assert client.get("/api/runs").json() == []
+    assert client.get("/api/runs").json() == {"items": [], "total": 0}
 
 
 def test_non_json_body_is_rejected(client, demo_url):
@@ -137,7 +144,7 @@ def test_non_json_body_is_rejected(client, demo_url):
         headers={"content-type": "text/plain"},
     )
     assert resp.status_code == 422
-    assert client.get("/api/runs").json() == []
+    assert client.get("/api/runs").json() == {"items": [], "total": 0}
 
 
 def test_unknown_run(client):

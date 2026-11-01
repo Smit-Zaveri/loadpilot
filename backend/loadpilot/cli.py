@@ -93,11 +93,22 @@ def ui(
     port: int = 8089,
     open_browser: Annotated[bool, typer.Option("--open", help="Open the UI in a browser.")] = False,
     demo: Annotated[bool, typer.Option(help="Serve the demo target at /demo.")] = True,
+    db: Annotated[
+        Path | None,
+        typer.Option(
+            envvar="LOADPILOT_DB",
+            dir_okay=False,
+            help="SQLite file for run history. Default: ~/.loadpilot/loadpilot.db",
+        ),
+    ] = None,
 ) -> None:
     """Start the web UI and API server."""
     import uvicorn
 
     from .api import LOOPBACK_HOSTS, create_app
+    from .storage import default_db_path
+
+    db_path = db or default_db_path()
 
     local = host in LOOPBACK_HOSTS
     if not local:
@@ -108,6 +119,7 @@ def ui(
         )
     url = f"http://{'127.0.0.1' if host in ('0.0.0.0', '::') else host}:{port}"
     console.print(f"[bold]LoadPilot[/] {__version__} · UI on [cyan]{url}[/]  (Ctrl+C to quit)")
+    console.print(f"[dim]History: {db_path}[/]")
     if demo:
         console.print(f"[dim]Demo target: {url}/demo/[/]")
     if open_browser:
@@ -116,7 +128,7 @@ def ui(
 
         threading.Timer(1.0, webbrowser.open, args=(url,)).start()
     uvicorn.run(
-        create_app(demo=demo, allowed_hosts=None if local else ["*"]),
+        create_app(demo=demo, allowed_hosts=None if local else ["*"], db_path=db_path),
         host=host,
         port=port,
         log_level="warning",

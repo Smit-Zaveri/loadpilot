@@ -56,7 +56,7 @@ test("run a demo test from the browser and control it live", async ({ page }) =>
   await expect(page.locator(".code-list")).toContainText("200");
 
   // The run is listed on the home page.
-  await page.getByRole("link", { name: "Start another test" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "New test" }).click();
   await expect(page.locator(".run-list")).toContainText("Demo: random latency");
 
   expect(errors).toEqual([]);

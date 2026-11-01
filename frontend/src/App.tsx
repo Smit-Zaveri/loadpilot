@@ -1,8 +1,11 @@
-import { Link, Outlet, createBrowserRouter } from "react-router";
+import { Link, NavLink, Outlet, createBrowserRouter } from "react-router";
 import { ThemeContext } from "./hooks/themeContext";
 import { useTheme } from "./hooks/useTheme";
+import { ComparePage } from "./pages/ComparePage";
+import { HistoryPage } from "./pages/HistoryPage";
 import { NewTestPage } from "./pages/NewTestPage";
 import { RunPage } from "./pages/RunPage";
+import { SettingsPage } from "./pages/SettingsPage";
 
 function Layout() {
   const { theme, toggle } = useTheme();
@@ -15,10 +18,16 @@ function Layout() {
         <Link to="/" className="wordmark">
           LoadPilot
         </Link>
-        <nav aria-label="Main">
-          <Link to="/" className="nav-link">
+        <nav aria-label="Main" className="nav">
+          <NavLink to="/" end className="nav-link">
             New test
-          </Link>
+          </NavLink>
+          <NavLink to="/history" className="nav-link">
+            History
+          </NavLink>
+          <NavLink to="/settings" className="nav-link">
+            Settings
+          </NavLink>
         </nav>
         <button type="button" className="btn btn-quiet" onClick={toggle}>
           {theme === "dark" ? "Light theme" : "Dark theme"}
@@ -48,6 +57,9 @@ export const routes = [
     children: [
       { path: "/", element: <NewTestPage /> },
       { path: "/runs/:id", element: <RunPage /> },
+      { path: "/history", element: <HistoryPage /> },
+      { path: "/compare", element: <ComparePage /> },
+      { path: "/settings", element: <SettingsPage /> },
       { path: "*", element: <NotFound /> },
     ],
   },

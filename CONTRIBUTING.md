@@ -44,11 +44,12 @@ backend/loadpilot/
   engine/       load scheduler (open + closed models) and HTTP transport
   metrics/      histogram, per-second collector, run aggregator
   demo_server/  mock target for trying things out and for tests
-  controller/   run manager: one active run, live subscribers, controls
+  controller/   run manager: one active run, live subscribers, controls, safety limits
+  storage/      SQLite: runs, per-second points, settings (numbered migrations)
   api/          FastAPI app: REST, WebSocket stream, serves the built UI
   cli.py        `loadpilot` command
 frontend/src/
-  pages/        New test form, live run view
+  pages/        New test, live run, History, Compare, Settings
   components/   charts (uPlot), controls, tables
   lib/          pure helpers (form → plan, formatting, stream reducer), unit tested
 ```

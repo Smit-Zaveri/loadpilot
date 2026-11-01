@@ -1,25 +1,29 @@
 import { useEffect, useId, useState } from "react";
-import { ApiError, api, type ControlAction, type RunDetail } from "../api";
+import { ApiError, api, type ControlAction, type Limits, type RunDetail } from "../api";
 
 interface Props {
   run: RunDetail;
+  limits: Limits | null;
   onError: (message: string | null) => void;
 }
 
-/** Slider range: up to 4x the planned peak, so there's room to push harder. */
-function sliderMax(run: RunDetail): number {
+/** Slider range: up to 4x the planned peak for room to push harder, capped at the safety limit. */
+function sliderMax(run: RunDetail, limits: Limits | null): number {
   const load = run.plan.load as { stages?: { target: number }[] };
   const peak = Math.max(run.target, ...(load.stages ?? []).map((s) => s.target), 1);
-  return Math.max(10, Math.ceil((peak * 4) / 10) * 10);
+  const wanted = Math.max(10, Math.ceil((peak * 4) / 10) * 10);
+  if (!limits) return wanted;
+  return Math.min(wanted, run.mode === "vus" ? limits.max_vus : limits.max_rate);
 }
 
-export function RunControls({ run, onError }: Props) {
+export function RunControls({ run, limits, onError }: Props) {
   const [busy, setBusy] = useState<ControlAction | null>(null);
   const [draft, setDraft] = useState(String(Math.round(run.target)));
   const [editing, setEditing] = useState(false);
   const inputId = useId();
   const unit = run.mode === "vus" ? "users" : "requests per second";
-  const max = sliderMax(run);
+  const max = sliderMax(run, limits);
+  const cap = limits ? (run.mode === "vus" ? limits.max_vus : limits.max_rate) : Infinity;
 
   useEffect(() => {
     if (!editing) setDraft(String(Math.round(run.target)));
@@ -31,7 +35,7 @@ export function RunControls({ run, onError }: Props) {
     try {
       await api.control(run.id, action, value);
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : String(e));
+      onError(e instanceof ApiError ? [e.message, ...e.details].join(" ") : String(e));
     } finally {
       setBusy(null);
     }
@@ -42,6 +46,10 @@ export function RunControls({ run, onError }: Props) {
     setEditing(false);
     if (!Number.isFinite(value) || value < 0) {
       onError(`Enter a target of 0 or more ${unit}.`);
+      return;
+    }
+    if (value > cap) {
+      onError(`The safety limit is ${cap} ${unit}. You can raise it in Settings.`);
       return;
     }
     if (Math.round(value) !== Math.round(run.target)) void send("set_load", value);

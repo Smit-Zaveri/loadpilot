@@ -5,7 +5,8 @@ export type RunStatus =
   | "stopping"
   | "finished"
   | "aborted"
-  | "failed";
+  | "failed"
+  | "interrupted";
 
 export type LoadMode = "vus" | "rate";
 export type ControlAction = "pause" | "resume" | "stop" | "abort" | "set_load";
@@ -79,6 +80,8 @@ interface RunBase {
   started_at: number | null;
   ended_at: number | null;
   error: string | null;
+  notes: string;
+  is_baseline: boolean;
 }
 
 export interface RunListItem extends RunBase {
@@ -112,6 +115,17 @@ export interface Health {
   demo: boolean;
 }
 
+export interface Limits {
+  max_vus: number;
+  max_rate: number;
+  max_duration: number;
+}
+
+export interface RunList {
+  items: RunListItem[];
+  total: number;
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -138,8 +152,8 @@ export function describeError(status: number, body: unknown): ApiError {
     return new ApiError("The test settings aren't valid.", status, lines);
   }
   if (detail && typeof detail === "object" && "message" in detail) {
-    const d = detail as { message: string; run_id?: string };
-    return new ApiError(d.message, status, [], d.run_id);
+    const d = detail as { message: string; run_id?: string; errors?: string[] };
+    return new ApiError(d.message, status, d.errors ?? [], d.run_id);
   }
   if (typeof detail === "string") return new ApiError(detail, status);
   return new ApiError(`Request failed (HTTP ${status}).`, status);
@@ -155,15 +169,32 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   } catch {
     throw new ApiError("Can't reach the LoadPilot server. Is `loadpilot ui` still running?", 0);
   }
-  const body: unknown = await resp.json().catch(() => null);
+  const body: unknown = resp.status === 204 ? null : await resp.json().catch(() => null);
   if (!resp.ok) throw describeError(resp.status, body);
   return body as T;
 }
 
+const runPath = (id: string) => `/api/runs/${encodeURIComponent(id)}`;
+
 export const api = {
   health: () => request<Health>("/api/health"),
-  listRuns: () => request<RunListItem[]>("/api/runs"),
-  getRun: (id: string) => request<RunDetail>(`/api/runs/${encodeURIComponent(id)}`),
+  listRuns: (params: { q?: string; limit?: number; offset?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.q) qs.set("q", params.q);
+    if (params.limit !== undefined) qs.set("limit", String(params.limit));
+    if (params.offset) qs.set("offset", String(params.offset));
+    const query = qs.toString();
+    return request<RunList>(`/api/runs${query ? `?${query}` : ""}`);
+  },
+  getRun: (id: string) => request<RunDetail>(runPath(id)),
+  updateRun: (id: string, changes: { name?: string; notes?: string }) =>
+    request<RunListItem>(runPath(id), { method: "PATCH", body: JSON.stringify(changes) }),
+  setBaseline: (id: string, on: boolean) =>
+    request<RunListItem>(`${runPath(id)}/baseline`, { method: "PUT", body: JSON.stringify({ on }) }),
+  deleteRun: (id: string) => request<null>(runPath(id), { method: "DELETE" }),
+  getSettings: () => request<{ limits: Limits }>("/api/settings"),
+  putSettings: (limits: Limits) =>
+    request<{ limits: Limits }>("/api/settings", { method: "PUT", body: JSON.stringify({ limits }) }),
   startRun: (plan: PlanJson) =>
     request<RunDetail>("/api/runs", { method: "POST", body: JSON.stringify(plan) }),
   control: (id: string, action: ControlAction, value?: number) =>
@@ -179,4 +210,4 @@ export function runStreamUrl(id: string): string {
 }
 
 export const isDone = (status: RunStatus) =>
-  status === "finished" || status === "aborted" || status === "failed";
+  status === "finished" || status === "aborted" || status === "failed" || status === "interrupted";

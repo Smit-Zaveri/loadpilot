@@ -10,6 +10,8 @@ export interface ChartSeries {
   /** CSS custom property holding the colour, e.g. "--series-1". */
   colorVar: string;
   dash?: number[];
+  /** Draw across missing points (used when overlaying runs of different lengths). */
+  spanGaps?: boolean;
 }
 
 interface Props {
@@ -110,7 +112,12 @@ export function TimeChart({
       legend: { live: true },
       scales: { x: { time: false }, y: { range: (_u, _min, max) => [0, max > 0 ? max * 1.1 : 1] } },
       axes: [
-        { ...axis, values: (_u, vals) => vals.map((v) => formatClock(v)) },
+        {
+          ...axis,
+          // Whole-second steps only; half-second ticks would print as duplicate m:ss labels.
+          incrs: [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200],
+          values: (_u, vals) => vals.map((v) => formatClock(v)),
+        },
         { ...axis, size: 64, values: (_u, vals) => vals.map((v) => formatAxis(v)) },
       ],
       series: [
@@ -120,6 +127,7 @@ export function TimeChart({
           stroke: cssVar(s.colorVar),
           width: 2,
           dash: s.dash,
+          spanGaps: s.spanGaps,
           points: { show: false },
           value: (_u: uPlot, v: number | null) => (v == null ? "–" : formatValue(v)),
         })),

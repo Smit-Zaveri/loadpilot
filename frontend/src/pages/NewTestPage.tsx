@@ -1,13 +1,16 @@
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router";
-import { ApiError, api, type Health, type RunListItem } from "../api";
+import { Link, useLocation, useNavigate } from "react-router";
+import { ApiError, api, type Health, type PlanJson, type RunListItem } from "../api";
+import { BaselineTag } from "../components/BaselineTag";
 import { StatusBadge } from "../components/StatusBadge";
+import { useLimits } from "../hooks/useLimits";
 import { formatCount, formatMs, formatPercent, formatTime } from "../lib/format";
 import {
   METHODS,
   buildPlan,
   defaultForm,
   parseDuration,
+  planToForm,
   type FieldErrors,
   type FormState,
 } from "../lib/plan";
@@ -48,18 +51,22 @@ function Field({
   );
 }
 
+const RECENT_COUNT = 6;
+
 function RecentRuns() {
   const [runs, setRuns] = useState<RunListItem[] | null>(null);
+  const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const load = () =>
       api
-        .listRuns()
-        .then((r) => {
+        .listRuns({ limit: RECENT_COUNT })
+        .then((page) => {
           if (cancelled) return;
-          setRuns(r);
+          setRuns(page.items);
+          setTotal(page.total);
           setError(null);
         })
         .catch((e: unknown) => !cancelled && setError(e instanceof ApiError ? e.message : String(e)));
@@ -74,9 +81,9 @@ function RecentRuns() {
   return (
     <section className="panel recent" aria-labelledby="recent-h">
       <h2 id="recent-h" className="panel-title">
-        This session
+        Recent runs
       </h2>
-      <p className="muted small">Runs are kept in memory until the server restarts.</p>
+      <p className="muted small">Every run is saved automatically.</p>
       {error && runs === null ? (
         <p className="alert alert-error" role="alert">
           Couldn't load runs. {error}
@@ -91,7 +98,9 @@ function RecentRuns() {
             <li key={r.id}>
               <Link to={`/runs/${r.id}`} className="run-link">
                 <span className="run-link-top">
-                  <span className="run-name">{r.name}</span>
+                  <span className="run-name">
+                    {r.name} {r.is_baseline && <BaselineTag />}
+                  </span>
                   <StatusBadge status={r.status} />
                 </span>
                 <span className="run-meta">
@@ -107,13 +116,29 @@ function RecentRuns() {
           ))}
         </ul>
       )}
+      {total > 0 && (
+        <p className="recent-more">
+          <Link to="/history">
+            {total > RECENT_COUNT ? `See all ${formatCount(total)} runs in History` : "Open History"}
+          </Link>
+        </p>
+      )}
     </section>
   );
 }
 
 export function NewTestPage() {
   const navigate = useNavigate();
-  const [form, setForm] = useState<FormState>(defaultForm);
+  const location = useLocation();
+  const limits = useLimits();
+  // "Run again" passes the saved plan in navigation state.
+  const [{ initialForm, prefillNotes }] = useState(() => {
+    const plan = (location.state as { plan?: PlanJson } | null)?.plan;
+    if (!plan) return { initialForm: defaultForm, prefillNotes: null };
+    const { form, notes } = planToForm(plan);
+    return { initialForm: form, prefillNotes: notes };
+  });
+  const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitError, setSubmitError] = useState<ApiError | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -141,7 +166,7 @@ export function NewTestPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitError(null);
-    const { plan, errors: errs } = buildPlan(form);
+    const { plan, errors: errs } = buildPlan(form, limits ?? undefined);
     setErrors(errs);
     if (!plan) return;
     setSubmitting(true);
@@ -163,6 +188,18 @@ export function NewTestPage() {
         <h1 id="form-h" className="page-title">
           New test
         </h1>
+        {prefillNotes && (
+          <div className="alert alert-info" role="status">
+            <p>Filled in from “{initialForm.name}”. Check the settings, then start.</p>
+            {prefillNotes.length > 0 && (
+              <ul>
+                {prefillNotes.map((n) => (
+                  <li key={n}>{n}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         <div className="request-row">
           <Field label="Method" id={`${id}-method`}>
@@ -239,6 +276,7 @@ export function NewTestPage() {
           <Field
             label={isRate ? "Target rate (req/s)" : "Number of users"}
             id={`${id}-amount`}
+            hint={limits ? `Limit: ${formatCount(isRate ? limits.max_rate : limits.max_vus)}` : undefined}
             error={errors.amount}
           >
             {(describedBy) => (

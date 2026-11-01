@@ -8,6 +8,7 @@ const LABELS: Record<RunStatus, string> = {
   finished: "Finished",
   aborted: "Aborted",
   failed: "Failed",
+  interrupted: "Interrupted",
 };
 
 /** Status is always spelled out; the dot only repeats it for quick scanning. */
